@@ -4,14 +4,26 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
-// Import the mongoose module
-const mongoose = require("mongoose");
-
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-const catalogRouter = require("./routes/catalog"); //Import routes for "catalog" area of site
+const catalogRouter = require('./routes/catalog');  //Import routes for "catalog" area of site
+
+const compression = require('compression');
+const helmet = require('helmet');
 
 var app = express();
+
+// Set up mongoose connection
+const mongoose = require('mongoose');
+mongoose.set('strictQuery', false);
+
+const dev_db_url = 'mongodb://127.0.0.1/library';
+const mongoDB = process.env.MONGODB_URI || dev_db_url;
+
+main().catch(err => console.log(err));
+async function main() {
+  await mongoose.connect(mongoDB);
+}
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -21,11 +33,14 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(helmet());
+app.use(compression()); // Compress all routes
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.use("/catalog", catalogRouter); // Add catalog routes to middleware chain.
+app.use('/catalog', catalogRouter);  // Add catalog routes to middleware chain.
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -42,21 +57,5 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-
-
-// Set `strictQuery: false` to globally opt into filtering by properties that aren't in the schema
-// Included because it removes preparatory warnings for Mongoose 7.
-// See: https://mongoosejs.com/docs/migrating_to_6.html#strictquery-is-removed-and-replaced-by-strict
-mongoose.set('strictQuery', false);
-
-// Define the database URL to connect to.
-const mongoDB = "mongodb://127.0.0.1/library";
-
-// Wait for database to connect, logging an error if there is a problem 
-main().catch(err => console.log(err));
-async function main() {
-  await mongoose.connect(mongoDB);
-}
-
 
 module.exports = app;
